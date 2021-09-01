@@ -1,0 +1,20 @@
+"machineers"
+{
+	"base"		"base"
+	"title"		"Machineers"
+	"maps"		"^gm_|^ms_"
+	"category"	"other"
+	"menusystem"	"1"
+
+	"settings"
+	{
+		1
+		{
+			"name"		"mach_friendlyfire"
+			"text"		"Friendly Fire"
+			"help"		"Enables friendly fire for units"
+			"type"		"CheckBox"
+			"default"	"0"
+		}
+	}
+}
