@@ -1,3 +1,5 @@
+local EDITOR_MOVE = IN_ATTACK2
+
 hook.Add("MachineersEditor_OnClose", "machineers_default_editor_close", function()
 	MCHN_Editor:RemoveRotationWidget()
 end)
@@ -165,7 +167,7 @@ local function InputThink_Translation()
 		
 	end
 	
-	if( LocalPlayer():KeyDown( MCHN_Editor.Settings["EDITOR_MOVE"] ) and !RotatingObject )then
+	if( LocalPlayer():KeyDown( EDITOR_MOVE ) and !RotatingObject )then
 		for key=1, #MCHN_Editor.Variables["Render_Models"] do
 		local model = MCHN_Editor.Variables["Render_Models"][key]
 			if(model.DragOffset==nil and model.Selected)then
