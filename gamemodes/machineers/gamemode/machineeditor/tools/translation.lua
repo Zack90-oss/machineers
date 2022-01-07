@@ -1,11 +1,22 @@
-local EDITOR_MOVE = IN_ATTACK2
+MCHN_Editor.Tools["Translation"]								= {}
+MCHN_Editor.Tools["Translation"]["ToolHook"]					= "MachineersEditor_Tools_Translation_Think"
+
+MCHN_Editor.Tools["Translation"]["Settings"]					= {}
+MCHN_Editor.Tools["Translation"]["Settings"]["MOVE"] 			= IN_ATTACK2
+MCHN_Editor.Tools["Translation"]["Settings"]["TRANSLATE"] 		= KEY_R
 
 hook.Add("MachineersEditor_OnClose", "machineers_default_editor_close", function()
-	MCHN_Editor:RemoveRotationWidget()
+	MCHN_Editor:RemoveTranslationWidget()
 end)
 
+function MCHN_Editor:IsTranslationPanelExists()
+	return MCHN_Editor.GetTranslationWidgetPanel and IsValid(MCHN_Editor:GetTranslationWidgetPanel())
+end
+
 function MCHN_Editor:CreateTranslationWidget()
-	if( MCHN_Editor.GetTranslationWidgetPanel and IsValid(MCHN_Editor:GetTranslationWidgetPanel()) or MCHN_Editor:GetLastSelectedModel()==nil )then return end
+	if( MCHN_Editor:IsTranslationPanelExists() or MCHN_Editor:GetLastSelectedModel()==nil )then 
+		return 
+	end
 	local modelname=vgui.Create( "DFrame" )
 	local size = {400,200}
 	modelname:SetSize(size[1],size[2])
@@ -113,27 +124,33 @@ function MCHN_Editor:RotateSelectedModels(RotationAngles)
 	end
 end
 
-function MCHN_Editor:RemoveRotationWidget()
-	if(MCHN_Editor.GetTranslationWidgetPanel)then
+function MCHN_Editor:RemoveTranslationWidget()
+	if(MCHN_Editor:IsTranslationPanelExists())then
 		MCHN_Editor:GetTranslationWidgetPanel():Remove()
 	end
 end
 
 local function InputThink_Translation()
-	
 	if(MCHN_Editor.Variables["NextClickTime"]==nil)then 
-		MCHN_Editor.Variables["NextClickTime"]=CurTime()+MCHN_Editor.Variables["DoubleClickCompensation"] 
+		MCHN_Editor.Variables["NextClickTime"]=CurTime()+MCHN_Editor.Settings["DoubleClickCompensation"] 
 	end
 	
 	if( LocalPlayer():KeyPressed( MCHN_Editor.Settings["EDITOR_SELECT"] ) and MCHN_Editor.Variables["NextClickTime"]<=CurTime() )then
-	MCHN_Editor.Variables["NextClickTime"]=CurTime()+MCHN_Editor.Variables["DoubleClickCompensation"] 
-		local outObject, outHitPos, lastDist = MCHN_Editor:IntersectView( function()
-		if(LocalPlayer():KeyDown( MCHN_Editor.Settings["EDITOR_MULTIPLE"] ))then return end
-			for key=1, #MCHN_Editor.Variables["Render_Models"] do
-				local model = MCHN_Editor.Variables["Render_Models"][key]
-				MCHN_Editor:UnselectProp( model )
+		MCHN_Editor.Variables["NextClickTime"] = CurTime()+MCHN_Editor.Settings["DoubleClickCompensation"] 
+		local outObject = MCHN_Editor:FindModelsAlongViewTrace()
+		outObject=MCHN_Editor:FindClosestFromTable(outObject)
+		if(outObject)then 
+			outObject =	outObject.Object
+		end
+		--print("Selected: "..outObject:GetModel())
+		
+		if( !outObject and !LocalPlayer():KeyDown( MCHN_Editor.Settings["EDITOR_MULTIPLE"] ) )then
+			for key,model in pairs (MCHN_Editor.Variables["Render_Models"]) do
+				if( model.Selected~=nil )then
+					MCHN_Editor:UnSelectEntity( model )
+				end
 			end
-		end) 
+		end
 		
 		if( !outObject and LocalPlayer():KeyDown( MCHN_Editor.Settings["EDITOR_HIDE"] ) )then
 			for key=1, #MCHN_Editor.Variables["Render_Models"] do
@@ -148,40 +165,67 @@ local function InputThink_Translation()
 			if(outObject~=model)then
 				for key=1, #MCHN_Editor.Variables["Render_Models"] do
 					local model = MCHN_Editor.Variables["Render_Models"][key]
-					MCHN_Editor:UnselectProp( model )
+					MCHN_Editor:UnSelectEntity( model )
 				end
+				MCHN_Editor.Variables["LastSelectedModel"] = nil
 			end
 		end		
 		
 		if(outObject)then
-			if(outObject.Selected==nil)then
+			if(!outObject.Selected)then
 				if(!LocalPlayer():KeyDown( MCHN_Editor.Settings["EDITOR_HIDE"] ))then
-					MCHN_Editor:SelectProp( outObject )
+					MCHN_Editor:SelectEntity( outObject )
 				else
 					MCHN_Editor:HideProp( outObject )
 				end
 			else
-				MCHN_Editor:UnselectProp( outObject )
+				MCHN_Editor:UnSelectEntity( outObject )
 			end
 		end
 		
 	end
 	
-	if( LocalPlayer():KeyDown( EDITOR_MOVE ) and !RotatingObject )then
+	if( input.IsKeyDown( MCHN_Editor.Tools["Translation"]["Settings"]["TRANSLATE"] ) )then
+		if(!MCHN_Editor:IsTranslationPanelExists())then
+			MCHN_Editor:CreateTranslationWidget()
+		end
+	elseif(MCHN_Editor:IsTranslationPanelExists())then
+		MCHN_Editor:RemoveTranslationWidget()
+	end
+	
+	
+	if( LocalPlayer():KeyDown( MCHN_Editor.Tools["Translation"]["Settings"]["MOVE"] ) and !RotatingObject )then
+		local info = MCHN_Editor:FindModelsAlongViewTrace( true )
+		info = MCHN_Editor:FindClosestFromTable(info)
 		for key=1, #MCHN_Editor.Variables["Render_Models"] do
-		local model = MCHN_Editor.Variables["Render_Models"][key]
-			if(model.DragOffset==nil and model.Selected)then
-				local _, HitPos, Distance = MCHN_Editor:IntersectView( false )
-				if(HitPos)then
-					model.DragOffset=HitPos-model:GetPos()
-					model.DragDistance=Distance
+			local model = MCHN_Editor.Variables["Render_Models"][key]
+			if(model.DragOffset==nil and model.Selected==true)then
+				if(istable(info) and !table.IsEmpty(info))then
+					local HitPos = info.HitPos
+					local Distance = MCHN_Editor:GetDistanceFromObjectToView(info)
+					--print(HitPos,Distance)
+					if(HitPos)then
+						model.DragOffset=HitPos-model:GetPos()
+						model.DragDistance=Distance
+					end
 				end
 			end
 			if(model.DragOffset~=nil)then
 				model:SetPos(LocalPlayer():EyePos()+LocalPlayer():GetAimVector()*model.DragDistance-model.DragOffset)
 			end
-		end		
+		end
+	end
+	
+	if( LocalPlayer():KeyReleased( MCHN_Editor.Tools["Translation"]["Settings"]["MOVE"] ) and !RotatingObject )then
+		for key,model in pairs(MCHN_Editor.Variables["Render_Models"]) do
+			model.DragOffset=nil
+		end
 	end
 end
 
 hook.Add("MachineersEditor_Tools_Translation_Think", "MachineersEditor_Tools_Translation", InputThink_Translation)
+
+local function OnUnselectEntity_Translation( Ent )
+	Ent.DragOffset=nil
+end
+hook.Add("MachineersEditor_OnUnSelectEntity", "MachineersEditor_Tools_Translation", OnUnselectEntity_Translation)

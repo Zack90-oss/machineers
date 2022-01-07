@@ -5,13 +5,13 @@ AddCSLuaFile( "sh_stuff.lua" )
 AddCSLuaFile( "cl_scoreboard.lua" )
 AddCSLuaFile( "sh_colorinvert.lua" )
 AddCSLuaFile( "machineeditor/cl_editor.lua" )
-AddCSLuaFile( "machineeditor/tools/translation.lua" )
-AddCSLuaFile( "machineeditor/tools/welder.lua" )
+AddCSLuaFile( "machineeditor/sh_editor.lua" )
 
 include( "sv_player.lua" )
 include( "sh_stuff.lua" )
 include( "shared.lua" )
 include( "sh_colorinvert.lua" )
+include( "machineeditor/sh_editor.lua" )
 
 util.AddNetworkString("StartNewRound")
 
